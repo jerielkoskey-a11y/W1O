@@ -1,0 +1,504 @@
+{
+  "name": "AI-Powered Customer Support Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-ticket",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -88
+      ],
+      "id": "bba3410d-40dc-48a9-ba8d-428c4b9204e2",
+      "name": "Webhook",
+      "webhookId": "c5769629-d341-4b3f-b22d-7b59281dd9c0"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1G6C11Gj0I-Zt4u4e9tTNqIB6PsXhSNMm_nXefmxxrwY/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "SupportTickets",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1G6C11Gj0I-Zt4u4e9tTNqIB6PsXhSNMm_nXefmxxrwY/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        -88
+      ],
+      "id": "d8e23b9d-8cbf-416f-b191-12577db16fe5",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "8SU46F5ak20wcu2r",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.TicketID }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        136
+      ],
+      "id": "00687528-c9b7-4b9c-a030-227eaaa65f6c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        448,
+        136
+      ],
+      "id": "27a98991-820d-48eb-b3f4-f775edfe7af8",
+      "name": "Mistral Cloud Chat Model",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "Q4DymV798CPFFexF",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"clean_category\": {\n    \"type\": \"string\",\n    \"description\": \"Billing, Technical, or General\"\n  },\n  \"is_duplicate\": {\n    \"type\": \"boolean\",\n    \"description\": \"true if duplicate of a previous ticket\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        136
+      ],
+      "id": "05a02364-6de5-4fa4-9a60-a27594ab408c",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Clean this ticket data: {{ $json }}\n1. Standardize 'Category' to one of:\n\"Billing\", \"Technical\", \"General\".\n2. Identify if duplicate of a previous one.\nOutput JSON: {\"clean_category\":\"string\",\n\"is_duplicate\": boolean}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        504,
+        -88
+      ],
+      "id": "25b466ff-9cf2-4d1b-ba3c-c2950ef892b2",
+      "name": "The Janitor"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the Issue: \"{{ $('Get row(s) in sheet').item.json.Issue }}\"\n1. Classify urgency: 'High', 'Medium', or 'Low'.\n2. Write a short, polite suggested response\nto the customer.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        968,
+        -88
+      ],
+      "id": "05922611-093e-4c8e-8da2-7f40787d2446",
+      "name": "The Triage Officer"
+    },
+    {
+      "parameters": {
+        "options": {
+          "maxTokens": 250,
+          "temperature": 0.5,
+          "maxRetries": 2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        912,
+        136
+      ],
+      "id": "8d8d6784-33f6-4883-9fd3-1493f90f985e",
+      "name": "Mistral Cloud Chat Model1",
+      "credentials": {
+        "mistralCloudApi": {
+          "id": "Q4DymV798CPFFexF",
+          "name": "Mistral Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Get row(s) in sheet').item.json.TicketID }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1040,
+        136
+      ],
+      "id": "80700fae-03aa-4715-886a-71625bdcbe6c",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"urgency\": {\n    \"type\": \"string\",\n    \"description\": \"High, Medium, or Low\"\n  },\n  \"suggested_response\": {\n    \"type\": \"string\",\n    \"description\": \"Short polite reply to the customer\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1168,
+        136
+      ],
+      "id": "06f92d6c-ecff-47c7-b9f4-75a8f766c564",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d0a093aa-3f9b-49b2-8a0f-81e328d9794b",
+              "leftValue": "={{ $json.output.urgency }}",
+              "rightValue": "Highh",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1376,
+        -88
+      ],
+      "id": "862429ff-4af3-45f2-a376-133b470b055a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "koskeyjeriel@gmail.com",
+        "subject": "=Urgent Ticket:  {{ $('Get row(s) in sheet').item.json.TicketID }}",
+        "emailType": "text",
+        "message": "={{ $('Get row(s) in sheet').item.json.TicketID }}- {{ $('Get row(s) in sheet').item.json.Issue }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        -160
+      ],
+      "id": "41d60308-a9a4-450d-bbc4-764530ffbe40",
+      "name": "Send a message",
+      "webhookId": "0467c07a-5397-4926-80ea-ce8eb7137533",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "KKJVQ5WPqFlH0O4W",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1G6C11Gj0I-Zt4u4e9tTNqIB6PsXhSNMm_nXefmxxrwY/edit?gid=787397344#gid=787397344",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 787397344,
+          "mode": "list",
+          "cachedResultName": "TriagedTickets",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1G6C11Gj0I-Zt4u4e9tTNqIB6PsXhSNMm_nXefmxxrwY/edit#gid=787397344"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Urgency": "={{ $json.output.urgency }}",
+            "SuggestedResponse": "={{ $json.output.suggested_response }}",
+            "CleanCategory": "={{ $('The Janitor').item.json.output.clean_category }}",
+            "TicketID": "={{ $('Get row(s) in sheet').item.json.TicketID }}"
+          },
+          "matchingColumns": [
+            "TicketID"
+          ],
+          "schema": [
+            {
+              "id": "TicketID",
+              "displayName": "TicketID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CleanCategory",
+              "displayName": "CleanCategory",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "SuggestedResponse",
+              "displayName": "SuggestedResponse",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1824,
+        -88
+      ],
+      "id": "aeed1909-d639-44cf-9711-438112eb7b03",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "8SU46F5ak20wcu2r",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        -88
+      ],
+      "id": "a3b0cc81-aded-4b73-9482-1bd2ff25edbd",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "The Janitor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "The Janitor",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "The Janitor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "The Janitor",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Janitor": {
+      "main": [
+        [
+          {
+            "node": "The Triage Officer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "The Triage Officer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "The Triage Officer",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "The Triage Officer",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "The Triage Officer": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8be05cae-425c-488a-9775-dee3d64f9e94",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "354c733c5b7f3a6ceff80d21f8fb1006a11efb9b6ff6ae5536b3d1cef4a797ae"
+  },
+  "id": "tFAIB9jzpGyGsTpN",
+  "tags": []
+}
